@@ -60,7 +60,7 @@ def main(args=None):
 
     try:
         # Execute barman put-wal through the ssh connection
-        ssh_process = RemotePutWal(config, config.wal_path)
+        ssh_process = RemotePutWal(config, config.wal_path, config.wal_name)
     except EnvironmentError as exc:
         exit_with_error('Error executing ssh: %s' % exc)
         return  # never reached
@@ -155,6 +155,12 @@ def parse_arguments(args=None):
         metavar="WAL_PATH",
         help="The value of the '%%p' keyword "
              "(according to 'archive_command').",
+    )
+    parser.add_argument(
+            "wal_name",
+            metavar="WAL_NAME",
+            help="The value of the '%%f' keyword "
+            "(according to 'archive_command').",
     )
     return parser.parse_args(args=args)
 
@@ -283,9 +289,10 @@ class RemotePutWal(object):
     The list of processes that has been spawned by RemotePutWal
     """
 
-    def __init__(self, config, wal_path):
+    def __init__(self, config, wal_path, wal_name):
         self.config = config
         self.wal_path = wal_path
+        self.wal_name = wal_name
         self.dest_file = None
 
         # Spawn a remote put-wal process
@@ -300,7 +307,7 @@ class RemotePutWal(object):
         with self.ssh_process.stdin as dest_file:
             with closing(ChecksumTarFile.open(
                     mode='w|', fileobj=dest_file)) as tar:
-                tar.add(wal_path, os.path.basename(wal_path))
+                tar.add(wal_path, wal_name)
 
     @classmethod
     def wait_for_all(cls):
